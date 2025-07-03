@@ -26,7 +26,7 @@ exports.createServiceManager = async (req, res) => {
       company: req.user.company,
       department
     });
-    
+    ``
     res.status(201).json(serviceManager);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
