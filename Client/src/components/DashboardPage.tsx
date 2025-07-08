@@ -1,15 +1,20 @@
-// src/components/DashboardPage.tsx
 import React from 'react';
+import SuperAdminDashboard from './SuperAdminDashboard'; // Import SuperAdminDashboard
+import CompanyAdminDashboard from './CompanyAdminDashboard'; // Import the new CompanyAdminDashboard component
 
 /**
  * Interface for User data.
+ * This should precisely match the structure of the user object returned by your backend.
+ * Note: 'company' is expected to be the company ID here.
+ * If your backend sends a company object (e.g., { _id: string, name: string }),
+ * this interface and related logic would need adjustment.
  */
 interface UserData {
   _id: string;
   name: string;
   email: string;
   role: string;
-  company?: string; // Optional, as superadmin might not have a company
+  company?: string; // Optional, as superadmin might not have a company. This is expected to be the company ID.
 }
 
 /**
@@ -41,32 +46,27 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, user }) => {
     );
   }
 
+  // Retrieve the token from localStorage to pass to sub-components
+  const token = localStorage.getItem('hrmsToken') || ''; // Ensure token is available
+
   // Determine dashboard content based on user role
   const renderDashboardContent = () => {
     switch (user.role) {
       case 'superadmin':
-        return (
-          <div className="p-6 bg-gray-700 rounded-lg shadow-lg">
-            <h3 className="text-2xl font-semibold text-indigo-300 mb-4">Super Admin Dashboard</h3>
-            <p className="text-gray-300">
-              Welcome, Super Admin! From here, you can manage companies, users, and system configurations.
-            </p>
-            <p className="mt-2 text-gray-400">
-              (e.g., Link to Company Management, User Management, System Settings, Audit Logs)
-            </p>
-          </div>
-        );
+        return <SuperAdminDashboard token={token} />; // Pass the token to SuperAdminDashboard
       case 'companyadmin':
+        // For company admin, we need to pass company ID and name.
+        // Assuming user.company contains the company ID.
+        // If your backend provides the company name directly in the user object,
+        // you can use it here. Otherwise, you might need to fetch it or use a placeholder.
+        const userCompanyId = user.company || '';
+        const userCompanyName = user.company ? `Company ID: ${user.company}` : 'Your Company'; // Placeholder if name not available
         return (
-          <div className="p-6 bg-gray-700 rounded-lg shadow-lg">
-            <h3 className="text-2xl font-semibold text-green-300 mb-4">Company Admin Dashboard</h3>
-            <p className="text-gray-300">
-              Welcome, Company Admin! Manage your company's departments, designations, employees, attendance, and leaves.
-            </p>
-            <p className="mt-2 text-gray-400">
-              (e.g., Link to Employee Management, Leave Approvals, Department/Designation Setup)
-            </p>
-          </div>
+          <CompanyAdminDashboard 
+            token={token} 
+            userCompanyId={userCompanyId} 
+            userCompanyName={userCompanyName} 
+          />
         );
       case 'servicemanager':
         return (
@@ -128,7 +128,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onLogout, user }) => {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-4 md:p-8 flex items-center justify-center">
+      <main className="flex-1 p-4 md:p-8 flex items-start justify-center">
         {renderDashboardContent()}
       </main>
 

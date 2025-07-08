@@ -4,6 +4,7 @@ import DashboardPage from './components/DashboardPage';
 
 /**
  * Interface for User data.
+ * This should match the structure of the user object returned by your backend.
  */
 interface UserData {
   _id: string;

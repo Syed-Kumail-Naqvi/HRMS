@@ -3,7 +3,7 @@ const express = require('express');
 const connectDB = require('./config/db');
 const cors = require('cors');
 const User = require('./models/User');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs'); // Ensure bcryptjs is imported
 
 connectDB();
 
@@ -17,7 +17,7 @@ const createSuperAdmin = async () => {
     const adminExists = await User.findOne({ email: 'superadmin@gmail.com' });
     if (!adminExists) {
       const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash('superadmin@123', salt);
+      const hashedPassword = await bcrypt.hash('superadmin@123', salt); // Password to hash
       
       await User.create({
         name: 'Super Admin',
@@ -26,6 +26,8 @@ const createSuperAdmin = async () => {
         role: 'superadmin'
       });
       console.log('Super Admin created');
+    } else {
+      console.log('Super Admin already exists.'); // Added this log for clarity
     }
   } catch (error) {
     console.error('Error creating super admin:', error.message);

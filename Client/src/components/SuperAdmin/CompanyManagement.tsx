@@ -1,3 +1,4 @@
+// src/components/SuperAdmin/CompanyManagement.tsx
 import React, { useState, useEffect } from 'react';
 
 /**
@@ -29,7 +30,7 @@ interface CompanyManagementProps {
 
 /**
  * CompanyManagement Component
- * Displays a list of companies and provides functionality to create new companies.
+ * Displays a list of companies and provides functionality to create, edit, and delete companies.
  * This component will be used within the SuperAdminDashboard.
  * Styled with Tailwind CSS.
  */
@@ -41,42 +42,54 @@ const CompanyManagement: React.FC<CompanyManagementProps> = ({ token }) => {
   // State for new company form
   const [newCompanyName, setNewCompanyName] = useState<string>('');
   const [newCompanyAdminEmail, setNewCompanyAdminEmail] = useState<string>('');
-  const [newCompanyLogo, setNewCompanyLogo] = useState<string>(''); // Placeholder for logo URL
+  const [newCompanyLogo, setNewCompanyLogo] = useState<string>('');
   const [creatingCompany, setCreatingCompany] = useState<boolean>(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
 
+  // State for editing company
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
+  const [editCompanyName, setEditCompanyName] = useState<string>('');
+  const [editCompanyLogo, setEditCompanyLogo] = useState<string>('');
+  const [editCompanyStatus, setEditCompanyStatus] = useState<number>(1); // Default to active
+  const [updatingCompany, setUpdatingCompany] = useState<boolean>(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updateSuccess, setUpdateSuccess] = useState<string | null>(null);
+
   /**
    * Fetches the list of companies from the backend.
    */
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/companies', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`, // Authenticated request
-          },
-        });
+  const fetchCompanies = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('http://localhost:5000/api/companies', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-        if (response.ok) {
-          const data: Company[] = await response.json();
-          setCompanies(data);
-        } else {
-          const errorData = await response.json();
-          setError(errorData.message || 'Failed to fetch companies.');
-        }
-      } catch (err) {
-        console.error('Network error fetching companies:', err);
-        setError('An unexpected error occurred while fetching companies.');
-      } finally {
-        setLoading(false);
+      if (response.ok) {
+        const data: Company[] = await response.json();
+        setCompanies(data);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.message || 'Failed to fetch companies.');
       }
-    };
+    } catch (err) {
+      console.error('Network error fetching companies:', err);
+      setError('An unexpected error occurred while fetching companies.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchCompanies();
-  }, [token]); // Re-fetch if token changes (e.g., on re-login)
+  }, [token]);
 
   /**
    * Handles the creation of a new company.
@@ -88,7 +101,6 @@ const CompanyManagement: React.FC<CompanyManagementProps> = ({ token }) => {
     setCreateError(null);
     setCreateSuccess(null);
 
-    // Basic client-side validation for the new company form
     if (!newCompanyName || !newCompanyAdminEmail || !newCompanyLogo) {
       setCreateError('All fields are required for creating a company.');
       setCreatingCompany(false);
@@ -100,18 +112,18 @@ const CompanyManagement: React.FC<CompanyManagementProps> = ({ token }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`, // Authenticated request
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ 
           name: newCompanyName, 
-          adminEmail: newCompanyAdminEmail, // Backend expects adminEmail
+          adminEmail: newCompanyAdminEmail,
           logo: newCompanyLogo 
         }),
       });
 
       if (response.ok) {
-        const newCompany: Company = await response.json();
-        setCompanies((prevCompanies) => [...prevCompanies, newCompany]); // Add new company to list
+        // Re-fetch companies to get the most up-to-date list including the new one
+        await fetchCompanies(); 
         setNewCompanyName('');
         setNewCompanyAdminEmail('');
         setNewCompanyLogo('');
@@ -128,12 +140,113 @@ const CompanyManagement: React.FC<CompanyManagementProps> = ({ token }) => {
     }
   };
 
+  /**
+   * Opens the edit modal and pre-fills the form with current company data.
+   * @param company - The company object to be edited.
+   */
+  const openEditModal = (company: Company) => {
+    setCurrentCompany(company);
+    setEditCompanyName(company.name);
+    setEditCompanyLogo(company.logo);
+    setEditCompanyStatus(company.status);
+    setIsEditModalOpen(true);
+    setUpdateError(null); // Clear previous errors
+    setUpdateSuccess(null); // Clear previous success messages
+  };
+
+  /**
+   * Closes the edit modal.
+   */
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setCurrentCompany(null);
+  };
+
+  /**
+   * Handles the update of an existing company.
+   * @param e - The form event object.
+   */
+  const handleUpdateCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentCompany) return;
+
+    setUpdatingCompany(true);
+    setUpdateError(null);
+    setUpdateSuccess(null);
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/companies/${currentCompany._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ 
+          name: editCompanyName, 
+          logo: editCompanyLogo, 
+          status: editCompanyStatus 
+        }),
+      });
+
+      if (response.ok) {
+        // Update the company in the local state
+        setCompanies(companies.map(comp => 
+          comp._id === currentCompany._id 
+            ? { ...comp, name: editCompanyName, logo: editCompanyLogo, status: editCompanyStatus } 
+            : comp
+        ));
+        setUpdateSuccess('Company updated successfully!');
+        closeEditModal(); // Close modal on success
+      } else {
+        const errorData = await response.json();
+        setUpdateError(errorData.message || 'Failed to update company.');
+      }
+    } catch (err) {
+      console.error('Network error updating company:', err);
+      setUpdateError('An unexpected error occurred while updating the company.');
+    } finally {
+      setUpdatingCompany(false);
+    }
+  };
+
+  /**
+   * Handles the deletion of a company.
+   * @param companyId - The ID of the company to delete.
+   * @param companyName - The name of the company for confirmation.
+   */
+  const handleDeleteCompany = async (companyId: string, companyName: string) => {
+    if (!window.confirm(`Are you sure you want to delete company "${companyName}"? This action cannot be undone.`)) {
+      return; // User cancelled
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/companies/${companyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        // Remove the deleted company from the local state
+        setCompanies(companies.filter(comp => comp._id !== companyId));
+        alert(`Company "${companyName}" deleted successfully!`); // Use alert for simplicity, could be a custom modal
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to delete company: ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Network error deleting company:', err);
+      alert('An unexpected error occurred while deleting the company.');
+    }
+  };
+
   if (loading) {
-    return <div className="text-center text-gray-300">Loading companies...</div>;
+    return <div className="text-center text-gray-300 py-8">Loading companies...</div>;
   }
 
   if (error) {
-    return <div className="text-center text-red-400">Error: {error}</div>;
+    return <div className="text-center text-red-400 py-8">Error: {error}</div>;
   }
 
   return (
@@ -253,8 +366,18 @@ const CompanyManagement: React.FC<CompanyManagementProps> = ({ token }) => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button className="text-indigo-400 hover:text-indigo-300 mr-3">Edit</button>
-                      <button className="text-red-400 hover:text-red-300">Delete</button>
+                      <button 
+                        onClick={() => openEditModal(company)}
+                        className="text-indigo-400 hover:text-indigo-300 mr-3 transition duration-150"
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteCompany(company._id, company.name)}
+                        className="text-red-400 hover:text-red-300 transition duration-150"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -263,6 +386,76 @@ const CompanyManagement: React.FC<CompanyManagementProps> = ({ token }) => {
           </div>
         )}
       </div>
+
+      {/* Edit Company Modal */}
+      {isEditModalOpen && currentCompany && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md border border-gray-700">
+            <h3 className="text-2xl font-bold text-white mb-4 text-center">Edit Company</h3>
+            <form onSubmit={handleUpdateCompany} className="space-y-4">
+              <div>
+                <label htmlFor="editCompanyName" className="block text-gray-300 text-sm font-bold mb-2">
+                  Company Name
+                </label>
+                <input
+                  type="text"
+                  id="editCompanyName"
+                  className="shadow appearance-none border border-gray-600 rounded-lg w-full py-2 px-3 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-600 placeholder-gray-400"
+                  value={editCompanyName}
+                  onChange={(e) => setEditCompanyName(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="editCompanyLogo" className="block text-gray-300 text-sm font-bold mb-2">
+                  Company Logo URL
+                </label>
+                <input
+                  type="url"
+                  id="editCompanyLogo"
+                  className="shadow appearance-none border border-gray-600 rounded-lg w-full py-2 px-3 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-600 placeholder-gray-400"
+                  value={editCompanyLogo}
+                  onChange={(e) => setEditCompanyLogo(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="editCompanyStatus" className="block text-gray-300 text-sm font-bold mb-2">
+                  Status
+                </label>
+                <select
+                  id="editCompanyStatus"
+                  className="shadow appearance-none border border-gray-600 rounded-lg w-full py-2 px-3 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-600"
+                  value={editCompanyStatus}
+                  onChange={(e) => setEditCompanyStatus(parseInt(e.target.value))}
+                  required
+                >
+                  <option value={1}>Active</option>
+                  <option value={2}>Inactive</option>
+                </select>
+              </div>
+              {updateError && <p className="text-red-400 text-sm mt-2 text-center">{updateError}</p>}
+              {updateSuccess && <p className="text-green-400 text-sm mt-2 text-center">{updateSuccess}</p>}
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out transform hover:scale-105"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300 ease-in-out transform hover:scale-105"
+                  disabled={updatingCompany}
+                >
+                  {updatingCompany ? 'Updating...' : 'Update Company'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

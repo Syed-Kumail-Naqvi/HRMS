@@ -1,18 +1,20 @@
+// src/components/SuperAdminDashboard.tsx
 import React, { useState } from 'react';
-import CompanyManagement from './SuperAdmin/CompanyManagement'; 
+import CompanyManagement from './SuperAdmin/CompanyManagement';
+import UserManagement from './SuperAdmin/UserManagement'; // Import the UserManagement component
 
 /**
  * Props for SuperAdminDashboard component.
  * @param token - The authentication token for API calls.
  */
 interface SuperAdminDashboardProps {
-  token: string; // SuperAdminDashboard now needs the token to pass to sub-components
+  token: string; // SuperAdminDashboard needs the token to pass to sub-components
 }
 
 /**
  * SuperAdminDashboard Component
  * This component will house the specific functionalities and UI for the Super Admin role.
- * For now, it contains placeholders for the main sections a Super Admin would manage.
+ * It provides a sidebar navigation to switch between different management sections.
  * Styled with Tailwind CSS.
  */
 const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ token }) => {
@@ -34,14 +36,9 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ token }) => {
           </div>
         );
       case 'companies':
-        return <CompanyManagement token={token} />; // Render CompanyManagement and pass the token
+        return <CompanyManagement token={token} />;
       case 'users':
-        return (
-          <div className="p-6 bg-gray-700 rounded-lg shadow-lg">
-            <h3 className="text-2xl font-semibold text-white mb-4">User Management</h3>
-            <p className="text-gray-300">Content for User Management will go here.</p>
-          </div>
-        );
+        return <UserManagement token={token} />; {/* Render UserManagement and pass the token */}
       case 'settings':
         return (
           <div className="p-6 bg-gray-700 rounded-lg shadow-lg">
